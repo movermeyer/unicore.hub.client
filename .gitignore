@@ -1,0 +1,6 @@
+*.egg-info/
+/ve/
+*.pyc
+/dist/
+*.sublime-*
+.coverage
