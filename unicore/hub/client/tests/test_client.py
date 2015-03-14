@@ -1,6 +1,8 @@
+import re
 import json
 from unittest import TestCase
-from urlparse import urljoin
+from urllib import urlencode
+from urlparse import urljoin, urlparse, parse_qs, urlunparse
 from uuid import uuid4
 
 import responses
@@ -25,9 +27,18 @@ class UserClientTestCase(TestCase):
             login_callback_url=cls.login_callback_url
         )
 
+    def check_request_basics(self, url):
+        self.assertEqual(len(responses.calls), 1)
+        request = responses.calls[0].request
+        self.assertEqual(request.url, url)
+        basic_auth = HTTPBasicAuth(self.app_id, self.app_password)
+        request_with_auth = basic_auth(requests.Request())
+        self.assertEqual(request.headers['Authorization'],
+                         request_with_auth.headers['Authorization'])
+
     @responses.activate
     def test_get_app_data(self):
-        user_id = 1234
+        user_id = uuid4().hex
         user_app_data = {'display_name': 'foo'}
         url = urljoin(self.host, '/users/%s' % user_id)
         responses.add(
@@ -39,22 +50,16 @@ class UserClientTestCase(TestCase):
 
         data = self.client.get_app_data(user_id)
         self.assertEqual(data, user_app_data)
-        self.assertEqual(len(responses.calls), 1)
-        request = responses.calls[0].request
-        self.assertEqual(request.url, url)
-        basic_auth = HTTPBasicAuth(self.app_id, self.app_password)
-        request_with_auth = basic_auth(requests.Request())
-        self.assertEqual(request.headers['Authorization'],
-                         request_with_auth.headers['Authorization'])
+        self.check_request_basics(url)
 
         responses.reset()
         responses.add(responses.GET, url, status=404)
-        with self.assertRaises(ClientException):
+        with self.assertRaisesRegexp(ClientException, 'HTTP 404'):
             self.client.get_app_data(user_id)
 
     @responses.activate
     def test_save_app_data(self):
-        user_id = 1234
+        user_id = uuid4().hex
         user_app_data = {'display_name': 'foo'}
         url = urljoin(self.host, '/users/%s' % user_id)
         responses.add(
@@ -66,22 +71,62 @@ class UserClientTestCase(TestCase):
 
         data = self.client.save_app_data(user_id, user_app_data)
         self.assertEqual(data, user_app_data)
-        self.assertEqual(len(responses.calls), 1)
-        request = responses.calls[0].request
-        self.assertEqual(request.url, url)
-        basic_auth = HTTPBasicAuth(self.app_id, self.app_password)
-        request_with_auth = basic_auth(requests.Request())
-        self.assertEqual(request.headers['Authorization'],
-                         request_with_auth.headers['Authorization'])
+        self.check_request_basics(url)
 
         responses.reset()
         responses.add(responses.POST, url, status=404)
-        with self.assertRaises(ClientException):
+        with self.assertRaisesRegexp(ClientException, 'HTTP 404'):
             self.client.save_app_data(user_id, {})
 
     @responses.activate
     def test_get_user(self):
-        pass
+        ticket = 'iamaticket'
+        url = urljoin(
+            self.host,
+            '/sso/validate?%s' % urlencode({
+                'service': self.login_callback_url,
+                'ticket': ticket}))
+        user_data = {
+            'uuid': uuid4().hex,
+            'username': 'foo_username',
+            'app_data': {}
+        }
+        responses.add(
+            responses.GET, re.compile(r'.*/sso/validate.*'),
+            body=json.dumps(user_data),
+            status=200,
+            content_type='application/json'
+        )
 
-    def test_login_callback_url(self):
-        pass
+        data = self.client.get_user(ticket)
+        self.assertEqual(data, user_data)
+        self.check_request_basics(url)
+
+        responses.reset()
+        responses.add(
+            responses.GET, re.compile(r'.*/sso/validate.*'),
+            body="no\n", status=200, content_type='application/json')
+        with self.assertRaisesRegexp(ClientException, r'ticket.*is invalid'):
+            self.client.get_user(ticket)
+
+    def test_login_redirect_url(self):
+        url = self.client.get_login_redirect_url()
+        parts = urlparse(url)
+        params = parse_qs(parts.query)
+        self.assertEqual(
+            urlunparse(parts[:4] + ('', '')), urljoin(self.host, '/sso/login'))
+        self.assertIn('service', params)
+        self.assertEqual(params['service'][0], self.login_callback_url)
+        self.assertIn(
+            urlencode({'service': 'http://example.com'}),
+            self.client.get_login_redirect_url('http://example.com'))
+
+        settings_no_callback = self.client.settings.copy()
+        del settings_no_callback['login_callback_url']
+        client_no_callback = UserClient(**settings_no_callback)
+        with self.assertRaisesRegexp(
+                ValueError, 'no login_callback_url provided'):
+            client_no_callback.get_login_redirect_url()
+        with self.assertRaisesRegexp(
+                ValueError, 'login_callback_url must be absolute'):
+            client_no_callback.get_login_redirect_url('/callback')

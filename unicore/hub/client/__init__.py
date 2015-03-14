@@ -29,6 +29,9 @@ class BaseClient(object):
         return urljoin(self.host, path)
 
     def _request(self, method, path, *args, **kwargs):
+        return self._request_no_parse(method, path, *args, **kwargs).json()
+
+    def _request_no_parse(self, method, path, *args, **kwargs):
         url = self._make_url(path)
         resp = self.session.request(method, url, *args, **kwargs)
 
@@ -36,7 +39,7 @@ class BaseClient(object):
             raise ClientException('HTTP %s: %s' %
                                   (resp.status_code, resp.content))
 
-        return resp.json()
+        return resp
 
     def get(self, path, *args, **kwargs):
         return self._request('get', path, *args, **kwargs)
@@ -64,7 +67,7 @@ class UserClient(BaseClient):
         return self.post('%s' % user_id, data=app_data)
 
     def _get_login_callback_url(self, login_callback_url=None):
-        login_callback_url = self.login_callback_url or login_callback_url
+        login_callback_url = login_callback_url or self.login_callback_url
 
         if not login_callback_url:
             raise ValueError('no login_callback_url provided')
@@ -85,9 +88,9 @@ class UserClient(BaseClient):
         params = {
             'service': self._get_login_callback_url(login_callback_url),
             'ticket': ticket}
-        data = self.get('/sso/validate', params=params)
+        resp = self._request_no_parse('get', '/sso/validate', params=params)
 
-        if isinstance(data, basestring) and data.startswith('no\n'):
+        if resp.content.startswith('no\n'):
             raise ClientException('ticket with login_callback_url is invalid')
 
-        return data
+        return resp.json()
