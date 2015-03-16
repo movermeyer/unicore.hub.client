@@ -139,3 +139,19 @@ class UserClientTestCase(TestCase):
         parts = urlparse(url)
         self.assertEqual(
             urlunparse(parts[:4] + ('', '')), urljoin(self.host, '/sso/login'))
+
+    def test_from_config(self):
+        settings = {
+            'unicorehub.host': 'http://localhost:8080',
+            'unicorehub.app_id': 'fa84e670f9e9460fbf612c150dd06b45',
+            'unicorehub.app_password': 'opW5Ba3KxMLcRmksOdje',
+            'unicorehub.redirect_to_https': False,
+            'unicorehub.login_callback_url': 'http://localhost:8080/callback'
+        }
+        client = UserClient.from_config(settings)
+        self.assertEqual(client.settings, {
+            'host': settings['unicorehub.host'],
+            'app_id': settings['unicorehub.app_id'],
+            'app_password': settings['unicorehub.app_password'],
+            'redirect_to_https': settings['unicorehub.redirect_to_https'],
+            'login_callback_url': settings['unicorehub.login_callback_url']})
