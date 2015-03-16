@@ -8,4 +8,11 @@ script:
   - ./run_tests.sh
 after_success:
   - coveralls
-
+deploy:
+  provider: pypi
+  user: Praekelt
+  password:
+    secure: ZjWcq5JRAxpQ2taTbpxf68g3hg04PcZxBWS9r5yp+kc79M1hHoZYuNmwibzpOSLpTEdPgTHY5tFl0EtF07SEHgv3e4XDangEY2iNEHsGMQToBOKf42ts+pMyvjHrHiXtEJ0xziMfuQbe3wuvTts2ZLz7u+qpnLaJGHwDu9JvHbs=
+  on:
+    tags: true
+    all_branches: true
