@@ -114,7 +114,8 @@ class UserClientTestCase(TestCase):
         parts = urlparse(url)
         params = parse_qs(parts.query)
         self.assertEqual(
-            urlunparse(parts[:4] + ('', '')), urljoin(self.host, '/sso/login'))
+            urlunparse(parts[:4] + ('', '')),
+            urljoin(self.host.replace('http:', 'https:'), '/sso/login'))
         self.assertIn('service', params)
         self.assertEqual(params['service'][0], self.login_callback_url)
         self.assertIn(
@@ -130,3 +131,11 @@ class UserClientTestCase(TestCase):
         with self.assertRaisesRegexp(
                 ValueError, 'login_callback_url must be absolute'):
             client_no_callback.get_login_redirect_url('/callback')
+
+        settings_disable_https = self.client.settings.copy()
+        settings_disable_https['redirect_to_https'] = False
+        client_disable_https = UserClient(**settings_disable_https)
+        url = client_disable_https.get_login_redirect_url()
+        parts = urlparse(url)
+        self.assertEqual(
+            urlunparse(parts[:4] + ('', '')), urljoin(self.host, '/sso/login'))

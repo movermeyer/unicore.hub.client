@@ -1,7 +1,7 @@
 import os
 import json
 from urllib import urlencode
-from urlparse import urljoin, urlparse
+from urlparse import urljoin, urlparse, urlunparse
 
 import requests
 from requests.auth import HTTPBasicAuth
@@ -24,15 +24,23 @@ class BaseClient(object):
         })
         self.host = settings['host']
 
-    def _make_url(self, path):
+    def _make_url(self, path, use_https=False):
         path = os.path.join(getattr(self, 'base_path', ''), path)
-        return urljoin(self.host, path)
+        host = self.host
+
+        if use_https and not self.host.startswith('https'):
+            parts = urlparse(self.host)
+            host = urlunparse(('https', ) + parts[1:])
+
+        return urljoin(host, path)
 
     def _request(self, method, path, *args, **kwargs):
         return self._request_no_parse(method, path, *args, **kwargs).json()
 
     def _request_no_parse(self, method, path, *args, **kwargs):
-        url = self._make_url(path)
+        kwargs = kwargs.copy()
+        use_https = kwargs.pop('use_https', False)
+        url = self._make_url(path, use_https=use_https)
         resp = self.session.request(method, url, *args, **kwargs)
 
         if resp.status_code not in (200, 201, 204):
@@ -80,9 +88,10 @@ class UserClient(BaseClient):
         return login_callback_url
 
     def get_login_redirect_url(self, login_callback_url=None):
-        # TODO: enforce https
         params = {'service': self._get_login_callback_url(login_callback_url)}
-        return self._make_url('/sso/login?%s' % urlencode(params))
+        use_https = self.settings.get('redirect_to_https', True)
+        return self._make_url(
+            '/sso/login?%s' % urlencode(params), use_https=use_https)
 
     def get_user(self, ticket, login_callback_url=None):
         params = {
