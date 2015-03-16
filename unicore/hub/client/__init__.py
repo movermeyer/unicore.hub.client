@@ -5,6 +5,8 @@ from urlparse import urljoin
 import requests
 from requests.auth import HTTPBasicAuth
 
+from unicore.hub.client.utils import client_from_config
+
 
 class ClientException(Exception):
     pass
@@ -47,6 +49,10 @@ class BaseClient(object):
     def put(self, path, *args, **kwargs):
         kwargs['data'] = json.dumps(kwargs['data'])
         return self._request('put', path, *args, **kwargs)
+
+    @classmethod
+    def from_config(cls, config, **kwargs):
+        return client_from_config(cls, config, **kwargs)
 
 
 class UserClient(BaseClient):
