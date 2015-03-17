@@ -6,6 +6,8 @@ from urlparse import urljoin, urlparse, urlunparse
 import requests
 from requests.auth import HTTPBasicAuth
 
+from unicore.hub.client.utils import client_from_config
+
 
 class ClientException(Exception):
     pass
@@ -60,6 +62,10 @@ class BaseClient(object):
         kwargs['data'] = json.dumps(kwargs['data'])
         return self._request('put', path, *args, **kwargs)
 
+    @classmethod
+    def from_config(cls, config, **kwargs):
+        return client_from_config(cls, config, **kwargs)
+
 
 class UserClient(BaseClient):
     base_path = '/users'
@@ -87,8 +93,11 @@ class UserClient(BaseClient):
 
         return login_callback_url
 
-    def get_login_redirect_url(self, login_callback_url=None):
+    def get_login_redirect_url(self, login_callback_url=None, locale=None):
         params = {'service': self._get_login_callback_url(login_callback_url)}
+        if locale:
+            params['_LOCALE_'] = locale
+
         use_https = self.settings.get('redirect_to_https', True)
         return self._make_url(
             '/sso/login?%s' % urlencode(params), use_https=use_https)
@@ -102,4 +111,75 @@ class UserClient(BaseClient):
         if resp.content.startswith('no\n'):
             raise ClientException('ticket with login_callback_url is invalid')
 
-        return resp.json()
+        return User(self, resp.json())
+
+
+class User(object):
+    """
+    A class that wraps a user's data dictionary and saves the data
+    to the `unicore.hub` server.
+
+    :param unicore.hub.client.UserClient user_client:
+        A :py:class:`unicore.hub.client.UserClient` instance used to save
+        and refresh the data dictionary.
+    :param dict user_data:
+        A dictionary containing user fields retrieved from the `unicore.hub`
+        server.
+
+    >>> ticket = "ST-1426597432-V7Iuw0ZLF7j3TAyhc1oWycOSWKkzlxsT"
+    >>> user = hubclient.get_user(ticket)
+    >>> user.get('uuid')
+    '54e22de2920440f0b74c78399533f13e'
+    >>> user.get('display_name')
+    'Foo'
+    >>> user.set('age', 25)
+    >>> user.save()
+    >>>
+
+    """
+
+    def __init__(self, user_client, user_data):
+        self.client = user_client
+        self.data = user_data
+
+    def get(self, field):
+        """
+        Returns the value of a user field.
+
+        :param str field:
+            The name of the user field.
+        :returns: str
+        """
+        if field in ('username', 'uuid', 'app_data'):
+            return self.data[field]
+        else:
+            return self.data.get('app_data', {})[field]
+
+    def set(self, field, value):
+        """
+        Sets the value of a user field.
+
+        :param str field:
+            The name of the user field. Trying to set immutable fields
+            ``username``, ``uuid`` or ``app_data`` will raise a ValueError.
+        :param value:
+            The new value of the user field.
+        :raises: ValueError
+        """
+        if field in ('username', 'uuid', 'app_data'):
+            raise ValueError('%s cannot be set' % field)
+        else:
+            self.data.setdefault('app_data', {})
+            self.data['app_data'][field] = value
+
+    def save(self):
+        """
+        Persists the user's app data to the `unicore.hub` server.
+        """
+        self.client.save_app_data(self.get('uuid'), self.get('app_data'))
+
+    def refresh(self):
+        """
+        Reloads the user's app data from the `unicore.hub` server.
+        """
+        self.data['app_data'] = self.client.get_app_data(self.get('uuid'))

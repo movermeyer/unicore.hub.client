@@ -98,8 +98,8 @@ class UserClientTestCase(TestCase):
             content_type='application/json'
         )
 
-        data = self.client.get_user(ticket)
-        self.assertEqual(data, user_data)
+        user_obj = self.client.get_user(ticket)
+        self.assertEqual(user_obj.data, user_data)
         self.check_request_basics(url)
 
         responses.reset()
@@ -110,7 +110,7 @@ class UserClientTestCase(TestCase):
             self.client.get_user(ticket)
 
     def test_login_redirect_url(self):
-        url = self.client.get_login_redirect_url()
+        url = self.client.get_login_redirect_url(locale='tam_IN')
         parts = urlparse(url)
         params = parse_qs(parts.query)
         self.assertEqual(
@@ -118,6 +118,8 @@ class UserClientTestCase(TestCase):
             urljoin(self.host.replace('http:', 'https:'), '/sso/login'))
         self.assertIn('service', params)
         self.assertEqual(params['service'][0], self.login_callback_url)
+        self.assertIn('_LOCALE_', params)
+        self.assertEqual(params['_LOCALE_'][0], 'tam_IN')
         self.assertIn(
             urlencode({'service': 'http://example.com'}),
             self.client.get_login_redirect_url('http://example.com'))
@@ -139,3 +141,19 @@ class UserClientTestCase(TestCase):
         parts = urlparse(url)
         self.assertEqual(
             urlunparse(parts[:4] + ('', '')), urljoin(self.host, '/sso/login'))
+
+    def test_from_config(self):
+        settings = {
+            'unicorehub.host': 'http://localhost:8080',
+            'unicorehub.app_id': 'fa84e670f9e9460fbf612c150dd06b45',
+            'unicorehub.app_password': 'opW5Ba3KxMLcRmksOdje',
+            'unicorehub.redirect_to_https': False,
+            'unicorehub.login_callback_url': 'http://localhost:8080/callback'
+        }
+        client = UserClient.from_config(settings)
+        self.assertEqual(client.settings, {
+            'host': settings['unicorehub.host'],
+            'app_id': settings['unicorehub.app_id'],
+            'app_password': settings['unicorehub.app_password'],
+            'redirect_to_https': settings['unicorehub.redirect_to_https'],
+            'login_callback_url': settings['unicorehub.login_callback_url']})
