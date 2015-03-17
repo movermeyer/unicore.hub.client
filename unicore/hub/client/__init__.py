@@ -112,3 +112,74 @@ class UserClient(BaseClient):
             raise ClientException('ticket with login_callback_url is invalid')
 
         return resp.json()
+
+
+class User(object):
+    """
+    A class that wraps a user's data dictionary and saves the data
+    to the `unicore.hub` server.
+
+    :param unicore.hub.client.UserClient user_client:
+        A :py:class:`unicore.hub.client.UserClient` instance used to save
+        and refresh the data dictionary.
+    :param dict user_data:
+        A dictionary containing user fields retrieved from the `unicore.hub`
+        server.
+
+    >>> ticket = "ST-1426597432-V7Iuw0ZLF7j3TAyhc1oWycOSWKkzlxsT"
+    >>> user = hubclient.get_user(ticket)
+    >>> user.get('uuid')
+    '54e22de2920440f0b74c78399533f13e'
+    >>> user.get('display_name')
+    'Foo'
+    >>> user.set('age', 25)
+    >>> user.save()
+    >>>
+
+    """
+
+    def __init__(self, user_client, user_data):
+        self.client = user_client
+        self.data = user_data
+
+    def get(self, field):
+        """
+        Returns the value of a user field.
+
+        :param str field:
+            The name of the user field.
+        :returns: str
+        """
+        if field in ('username', 'uuid', 'app_data'):
+            return self.data[field]
+        else:
+            return self.data.get('app_data', {})[field]
+
+    def set(self, field, value):
+        """
+        Sets the value of a user field.
+
+        :param str field:
+            The name of the user field. Trying to set immutable fields
+            ``username``, ``uuid`` or ``app_data`` will raise a ValueError.
+        :param value:
+            The new value of the user field.
+        :raises: ValueError
+        """
+        if field in ('username', 'uuid', 'app_data'):
+            raise ValueError('%s cannot be set' % field)
+        else:
+            self.data.setdefault('app_data', {})
+            self.data['app_data'][field] = value
+
+    def save(self):
+        """
+        Persists the data to the `unicore.hub` server.
+        """
+        self.client.save_app_data(self.get('uuid'), self.get('app_data'))
+
+    def refresh(self):
+        """
+        Reloads the user's data from the `unicore.hub` server.
+        """
+        self.data['app_data'] = self.client.get_app_data(self.get('uuid'))
