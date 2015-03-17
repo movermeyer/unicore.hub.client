@@ -93,8 +93,11 @@ class UserClient(BaseClient):
 
         return login_callback_url
 
-    def get_login_redirect_url(self, login_callback_url=None):
+    def get_login_redirect_url(self, login_callback_url=None, locale=None):
         params = {'service': self._get_login_callback_url(login_callback_url)}
+        if locale:
+            params['_LOCALE_'] = locale
+
         use_https = self.settings.get('redirect_to_https', True)
         return self._make_url(
             '/sso/login?%s' % urlencode(params), use_https=use_https)

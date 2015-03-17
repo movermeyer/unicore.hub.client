@@ -110,7 +110,7 @@ class UserClientTestCase(TestCase):
             self.client.get_user(ticket)
 
     def test_login_redirect_url(self):
-        url = self.client.get_login_redirect_url()
+        url = self.client.get_login_redirect_url(locale='tam_IN')
         parts = urlparse(url)
         params = parse_qs(parts.query)
         self.assertEqual(
@@ -118,6 +118,8 @@ class UserClientTestCase(TestCase):
             urljoin(self.host.replace('http:', 'https:'), '/sso/login'))
         self.assertIn('service', params)
         self.assertEqual(params['service'][0], self.login_callback_url)
+        self.assertIn('_LOCALE_', params)
+        self.assertEqual(params['_LOCALE_'][0], 'tam_IN')
         self.assertIn(
             urlencode({'service': 'http://example.com'}),
             self.client.get_login_redirect_url('http://example.com'))
