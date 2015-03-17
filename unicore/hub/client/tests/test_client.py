@@ -98,8 +98,8 @@ class UserClientTestCase(TestCase):
             content_type='application/json'
         )
 
-        data = self.client.get_user(ticket)
-        self.assertEqual(data, user_data)
+        user_obj = self.client.get_user(ticket)
+        self.assertEqual(user_obj.data, user_data)
         self.check_request_basics(url)
 
         responses.reset()

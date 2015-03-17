@@ -111,7 +111,7 @@ class UserClient(BaseClient):
         if resp.content.startswith('no\n'):
             raise ClientException('ticket with login_callback_url is invalid')
 
-        return resp.json()
+        return User(self, resp.json())
 
 
 class User(object):
@@ -174,12 +174,12 @@ class User(object):
 
     def save(self):
         """
-        Persists the data to the `unicore.hub` server.
+        Persists the user's app data to the `unicore.hub` server.
         """
         self.client.save_app_data(self.get('uuid'), self.get('app_data'))
 
     def refresh(self):
         """
-        Reloads the user's data from the `unicore.hub` server.
+        Reloads the user's app data from the `unicore.hub` server.
         """
         self.data['app_data'] = self.client.get_app_data(self.get('uuid'))
