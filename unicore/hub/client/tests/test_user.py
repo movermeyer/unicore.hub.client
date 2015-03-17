@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import mock
 
-from unicore.hub.client import User, ClientException
+from unicore.hub.client import User
 
 
 class UserTestCase(TestCase):
