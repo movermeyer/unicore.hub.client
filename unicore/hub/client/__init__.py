@@ -108,7 +108,7 @@ class UserClient(BaseClient):
             'ticket': ticket}
         resp = self._request_no_parse('get', '/sso/validate', params=params)
 
-        if resp.content.startswith('no\n'):
+        if resp.json() == 'no\n':
             raise ClientException('ticket with login_callback_url is invalid')
 
         return User(self, resp.json())

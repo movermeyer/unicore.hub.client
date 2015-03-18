@@ -12,6 +12,9 @@ from requests.auth import HTTPBasicAuth
 from unicore.hub.client import UserClient, ClientException
 
 
+TICKET_INVALID_RESPONSE = json.dumps('no\n')
+
+
 class UserClientTestCase(TestCase):
 
     @classmethod
@@ -105,7 +108,8 @@ class UserClientTestCase(TestCase):
         responses.reset()
         responses.add(
             responses.GET, re.compile(r'.*/sso/validate.*'),
-            body="no\n", status=200, content_type='application/json')
+            body=TICKET_INVALID_RESPONSE, status=200,
+            content_type='application/json')
         with self.assertRaisesRegexp(ClientException, r'ticket.*is invalid'):
             self.client.get_user(ticket)
 
