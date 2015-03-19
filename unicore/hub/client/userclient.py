@@ -1,7 +1,8 @@
 from urllib import urlencode
 from urlparse import urlparse
 
-from unicore.hub.client.base import ClientException, BaseClient
+from unicore.hub.client.base import (ClientException, BaseClient,
+                                     BaseClientObject)
 
 
 class UserClient(BaseClient):
@@ -51,7 +52,7 @@ class UserClient(BaseClient):
         return User(self, resp.json())
 
 
-class User(object):
+class User(BaseClientObject):
     """
     A class that wraps a user's data dictionary and saves the data
     to the `unicore.hub` server.
@@ -74,10 +75,6 @@ class User(object):
     >>>
 
     """
-
-    def __init__(self, user_client, user_data):
-        self.client = user_client
-        self.data = user_data
 
     def get(self, field):
         """

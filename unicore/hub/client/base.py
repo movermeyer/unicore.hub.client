@@ -64,3 +64,22 @@ class BaseClient(object):
     @classmethod
     def from_config(cls, config, **kwargs):
         return client_from_config(cls, config, **kwargs)
+
+
+class BaseClientObject(object):
+
+    def __init__(self, client, data):
+        self.client = client
+        self.data = data
+
+    def get(self, field):
+        raise NotImplementedError
+
+    def set(self, field, value):
+        raise NotImplementedError
+
+    def save(self):
+        raise NotImplementedError
+
+    def refresh(self):
+        raise NotImplementedError
