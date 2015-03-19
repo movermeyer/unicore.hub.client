@@ -82,7 +82,7 @@ class User(BaseClientObject):
 
         :param str field:
             The name of the user field.
-        :returns: str
+        :returns: str -- the value
         """
         if field in ('username', 'uuid', 'app_data'):
             return self.data[field]
