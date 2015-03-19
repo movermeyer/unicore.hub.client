@@ -25,8 +25,12 @@ class BaseClient(object):
         })
         self.host = settings['host']
 
+    @property
+    def base_path(self):
+        return getattr(self, 'base_path', '')
+
     def _make_url(self, path, use_https=False):
-        path = os.path.join(getattr(self, 'base_path', ''), path)
+        path = os.path.join(self.base_path, path) if path else self.base_path
         host = self.host
 
         if use_https and not self.host.startswith('https'):

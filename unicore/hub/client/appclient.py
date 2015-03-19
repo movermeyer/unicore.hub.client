@@ -17,10 +17,10 @@ class AppClient(BaseClient):
         return self.get('%s' % app_id)
 
     def save_app_data(self, app_id, data):
-        return self.put('%s' % app_id, data)
+        return self.put('%s' % app_id, data=data)
 
     def reset_app_password(self, app_id):
-        data = self.put('%s/reset_password' % app_id)
+        data = self.put('%s/reset_password' % app_id, data='')
         return data['password']
 
 
