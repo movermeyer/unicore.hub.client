@@ -20,12 +20,12 @@ class BaseClientTestMixin(object):
     @classmethod
     def setUpClass(cls):
         cls.app_id = uuid4().hex
-        cls.app_password = 'dakfjd042342cs'
+        cls.app_key = 'dakfjd042342cs'
         cls.host = 'http://localhost:8000'
         cls.login_callback_url = 'http://localhost:8080/callback'
         cls.client = cls.client_class(
             app_id=cls.app_id,
-            app_password=cls.app_password,
+            app_key=cls.app_key,
             host=cls.host,
             login_callback_url=cls.login_callback_url
         )
@@ -34,26 +34,34 @@ class BaseClientTestMixin(object):
         self.assertEqual(len(responses.calls), 1)
         request = responses.calls[0].request
         self.assertEqual(request.url, url)
-        basic_auth = HTTPBasicAuth(self.app_id, self.app_password)
+        basic_auth = HTTPBasicAuth(self.app_id, self.app_key)
         request_with_auth = basic_auth(requests.Request())
         self.assertEqual(request.headers['Authorization'],
                          request_with_auth.headers['Authorization'])
 
     def test_from_config(self):
-        settings = {
+        settings_new = {
             'unicorehub.host': 'http://localhost:8080',
             'unicorehub.app_id': 'fa84e670f9e9460fbf612c150dd06b45',
-            'unicorehub.app_password': 'opW5Ba3KxMLcRmksOdje',
+            'unicorehub.app_key': 'opW5Ba3KxMLcRmksOdje',
             'unicorehub.redirect_to_https': False,
             'unicorehub.login_callback_url': 'http://localhost:8080/callback'
         }
-        client = self.client_class.from_config(settings)
-        self.assertEqual(client.settings, {
-            'host': settings['unicorehub.host'],
-            'app_id': settings['unicorehub.app_id'],
-            'app_password': settings['unicorehub.app_password'],
-            'redirect_to_https': settings['unicorehub.redirect_to_https'],
-            'login_callback_url': settings['unicorehub.login_callback_url']})
+        settings_old = settings_new.copy()
+        settings_old['unicorehub.app_password'] = settings_old[
+            'unicorehub.app_key']
+        del settings_old['unicorehub.app_key']
+
+        for settings in (settings_new, settings_old):
+            client = self.client_class.from_config(settings)
+            self.assertEqual(client.settings, {
+                'host': settings['unicorehub.host'],
+                'app_id': settings['unicorehub.app_id'],
+                'app_key': (settings.get('unicorehub.app_key') or
+                            settings.get('unicorehub.app_password')),
+                'redirect_to_https': settings['unicorehub.redirect_to_https'],
+                'login_callback_url': settings['unicorehub.login_callback_url']
+            })
 
 
 class UserClientTestCase(BaseClientTestMixin, TestCase):
@@ -175,12 +183,13 @@ class AppClientTestCase(BaseClientTestMixin, TestCase):
         url = urljoin(self.host, '/apps')
         app_data = {
             'title': 'Foo',
-            'groups': ['group:apps_manager']
+            'groups': ['group:apps_manager'],
+            'url': 'http://www.example.com'
         }
         app_data_complete = app_data.copy()
         app_data_complete.update({
             'uuid': uuid4().hex,
-            'password': 'password'})
+            'key': 'key'})
         responses.add(
             responses.POST, url,
             body=json.dumps(app_data_complete),
@@ -188,9 +197,7 @@ class AppClientTestCase(BaseClientTestMixin, TestCase):
             content_type='application/json'
         )
 
-        app, password = self.client.create_app(app_data)
-        self.assertEqual(password, 'password')
-        del app_data_complete['password']
+        app = self.client.create_app(app_data)
         self.assertEqual(app.data, app_data_complete)
         self.check_request_basics(url)
 
@@ -272,14 +279,15 @@ class AppClientTestCase(BaseClientTestMixin, TestCase):
             self.client.save_app_data(app_data['uuid'], app_data)
 
     @responses.activate
-    def test_reset_app_password(self):
+    def test_reset_app_key(self):
         app_data = {
             'uuid': uuid4().hex,
             'title': 'Foo',
+            'url': 'http://www.example.com',
             'groups': ['group:apps_manager'],
-            'password': 'password'
+            'key': 'key'
         }
-        url = urljoin(self.host, '/apps/%s/reset_password' % app_data['uuid'])
+        url = urljoin(self.host, '/apps/%s/reset_key' % app_data['uuid'])
         responses.add(
             responses.PUT, url,
             body=json.dumps(app_data),
@@ -287,11 +295,11 @@ class AppClientTestCase(BaseClientTestMixin, TestCase):
             content_type='application/json'
         )
 
-        password = self.client.reset_app_password(app_data['uuid'])
-        self.assertEqual(password, 'password')
+        key = self.client.reset_app_key(app_data['uuid'])
+        self.assertEqual(key, 'key')
         self.check_request_basics(url)
 
         responses.reset()
         responses.add(responses.PUT, url, status=404)
         with self.assertRaisesRegexp(ClientException, 'HTTP 404'):
-            self.client.reset_app_password(app_data['uuid'])
+            self.client.reset_app_key(app_data['uuid'])

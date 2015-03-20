@@ -13,6 +13,12 @@ def client_from_config(
                     for key, value in configuration.iteritems()
                     if key.startswith(prefix))
     settings.update(kwargs)
+
+    # password renamed to key - don't break old configs
+    if 'app_password' in settings:
+        settings['app_key'] = settings['app_password']
+        del settings['app_password']
+
     return client_cls(**settings)
 
 

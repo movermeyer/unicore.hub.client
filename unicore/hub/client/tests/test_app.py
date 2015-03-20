@@ -9,8 +9,10 @@ from unicore.hub.client import App
 class AppTestCase(TestCase):
     app_data = {
         'uuid': uuid4().hex,
+        'key': 'iamakey',
+        'url': 'http://www.example.com',
         'title': 'Foo',
-        'groups': ['group:apps_manager']
+        'groups': ['group:apps_manager'],
     }
 
     def create_app(self, app_client=None, **data_overrides):
@@ -26,7 +28,7 @@ class AppTestCase(TestCase):
         app = self.create_app()
 
         # check that immutable fields cannot be set
-        for field in ('uuid', 'password'):
+        for field in ('uuid', 'key'):
             with self.assertRaisesRegexp(ValueError, 'cannot be set'):
                 app.set(field, 'new_%s' % field)
 
@@ -53,6 +55,8 @@ class AppTestCase(TestCase):
         app = self.create_app()
         new_app_data = {
             'uuid': self.app_data['uuid'],
+            'key': 'anotherkey',
+            'url': 'http://www.example2.com',
             'title': 'New Foo',
             'groups': [],
         }
@@ -64,12 +68,12 @@ class AppTestCase(TestCase):
         app.client.get_app_data.assert_called_with(self.app_data['uuid'])
         self.assertEqual(app.data, new_app_data)
 
-    def test_reset_password(self):
+    def test_reset_key(self):
         app = self.create_app()
-        app.client.reset_app_password = mock.Mock()
-        app.client.reset_app_password.return_value = 'new_password'
+        app.client.reset_app_key = mock.Mock()
+        app.client.reset_app_key.return_value = 'new_key'
 
-        password = app.reset_password()
-        app.client.reset_app_password.assert_called_with(self.app_data['uuid'])
-        self.assertEqual(password, 'new_password')
-        self.assertNotIn('password', app.data)
+        password = app.reset_key()
+        app.client.reset_app_key.assert_called_with(self.app_data['uuid'])
+        self.assertEqual(password, 'new_key')
+        self.assertIn('key', app.data)
