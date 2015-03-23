@@ -76,4 +76,4 @@ class AppTestCase(TestCase):
         password = app.reset_key()
         app.client.reset_app_key.assert_called_with(self.app_data['uuid'])
         self.assertEqual(password, 'new_key')
-        self.assertIn('key', app.data)
+        self.assertEqual(password, app.data['key'])

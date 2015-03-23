@@ -100,4 +100,6 @@ class App(BaseClientObject):
 
         :returns: str -- the new key
         """
-        return self.client.reset_app_key(self.get('uuid'))
+        new_key = self.client.reset_app_key(self.get('uuid'))
+        self.data['key'] = new_key
+        return new_key
