@@ -19,7 +19,7 @@ class BaseClient(object):
         self.session = requests.Session()
         self.session.auth = HTTPBasicAuth(
             settings['app_id'],
-            settings['app_password'])
+            settings['app_key'])
         self.session.headers.update({
             'Content-Type': 'application/json'
         })

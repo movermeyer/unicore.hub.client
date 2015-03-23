@@ -6,8 +6,7 @@ class AppClient(BaseClient):
 
     def create_app(self, data):
         new_data = self.post('', data=data)
-        password = new_data.pop('password')
-        return App(self, new_data), password
+        return App(self, new_data)
 
     def get_app(self, app_id):
         data = self.get('%s' % app_id)
@@ -19,9 +18,9 @@ class AppClient(BaseClient):
     def save_app_data(self, app_id, data):
         return self.put('%s' % app_id, data=data)
 
-    def reset_app_password(self, app_id):
-        data = self.put('%s/reset_password' % app_id, data='')
-        return data['password']
+    def reset_app_key(self, app_id):
+        data = self.put('%s/reset_key' % app_id, data='')
+        return data['key']
 
 
 class App(BaseClientObject):
@@ -36,11 +35,9 @@ class App(BaseClientObject):
         A dictionary containing app fields retrieved from the `unicore.hub`
         server.
 
-    >>> app, app_password = app_client.create_app({'title': 'Foo'})
-    >>> app_password
-    'Bq4JlaOxXx9atOFBHpHh'
-    >>> app.get('password')
-    KeyError: 'password'
+    >>> app = app_client.create_app({'title': 'Foo'})
+    >>> app.get('key')
+    '1e82b117e30a7382d6ff327b00376cabda15ced3'
     >>> app.get('uuid')
     'f9e90e6b5a894c03b251df5b59c386d0'
     >>> app.get('title')
@@ -49,9 +46,9 @@ class App(BaseClientObject):
     []
     >>> app.set('title', 'New Foo')
     >>> app.save()
-    >>> app_password = app.reset_password()
-    >>> app_password
-    'BZPHmoUeQKZ2q5KHRNqb'
+    >>> app_key = app.reset_key()
+    >>> app_key
+    'eeaec8656792ae403c41265f45a33f18849a061e'
     >>>
 
     """
@@ -72,16 +69,16 @@ class App(BaseClientObject):
 
         :param str field:
             The name of the app field. Trying to set immutable fields
-            ``uuid`` or ``password`` will raise a ValueError.
+            ``uuid`` or ``key`` will raise a ValueError.
         :param value:
             The new value of the app field.
         :raises: ValueError
         """
         if field == 'uuid':
             raise ValueError('uuid cannot be set')
-        elif field == 'password':
+        elif field == 'key':
             raise ValueError(
-                'password cannot be set. Use \'reset_password\' method')
+                'key cannot be set. Use \'reset_key\' method')
         else:
             self.data[field] = value
 
@@ -97,10 +94,12 @@ class App(BaseClientObject):
         """
         self.data = self.client.get_app_data(self.get('uuid'))
 
-    def reset_password(self):
+    def reset_key(self):
         """
-        Resets the app's password on the `unicore.hub` server.
+        Resets the app's key on the `unicore.hub` server.
 
-        :returns: str -- the new password
+        :returns: str -- the new key
         """
-        return self.client.reset_app_password(self.get('uuid'))
+        new_key = self.client.reset_app_key(self.get('uuid'))
+        self.data['key'] = new_key
+        return new_key
