@@ -11,6 +11,6 @@ Client library to interact with Universal Core's `unicore.hub`
     :target: https://coveralls.io/r/universalcore/unicore.hub.client?branch=develop
     :alt: Code Coverage
 
-.. image:: https://pypip.in/version/unicore.hub.client/badge.svg
+.. image:: https://img.shields.io/pypi/v/unicore.hub.client.svg
     :target: https://pypi.python.org/pypi/unicore.hub.client
     :alt: Pypi Package
